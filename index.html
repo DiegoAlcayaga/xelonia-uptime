@@ -8116,75 +8116,9 @@
             applyRolePermissions();
             navigate(currentRole === 'admin' ? 'dashboard' : 'ots');
 
-            // FIREBASE: Activar listener de alertas en tiempo real
-            if (typeof firebase !== 'undefined' && firebase.firestore && currentUser) {
-                const db = firebase.firestore();
-                db.collection('cmms').doc('alerts').onSnapshot((doc) => {
-                    if (doc.exists) {
-                        const alertData = doc.data();
-
-                        // Si hay una alerta activa
-                        if (alertData.active && alertData.mensaje) {
-                            const yaConfirmada = alertData.confirmados && alertData.confirmados.includes(currentUser.id);
-                            const isForMe = !alertData.targetId || alertData.targetId === currentUser.id;
-                            const esVigente = (Date.now() - alertData.timestamp) < 3600000;
-
-                            if (esVigente && !yaConfirmada && isForMe) {
-                                console.log("🔔 Alert received from cloud:", alertData.mensaje);
-                                // Activar alerta sensorial
-                                if (typeof activarAlertaSensorial === 'function') {
-                                    activarAlertaSensorial(alertData);
-                                }
-                            }
-                        }
-                    }
-                });
-                console.log("👂 Firebase alert listener activated for user:", currentUser.nombre);
-            }
-
-            // FIREBASE: Activar listener de OTs en tiempo real
-            if (typeof firebase !== 'undefined' && firebase.firestore && currentUser) {
-                const db = firebase.firestore();
-                let previousMyOTIds = ots.filter(o => o.asignadoId === currentUser.id).map(o => o.id); // Solo IDs de mis OTs
-
-                db.collection('cmms').doc('ots').onSnapshot((doc) => {
-                    if (doc.exists) {
-                        const data = doc.data();
-                        if (data.lista && Array.isArray(data.lista)) {
-                            // Detectar nuevas OTs para este usuario comparando con el snapshot previo
-                            const misOTsEnCloud = data.lista.filter(o => o.asignadoId === currentUser.id);
-                            const nuevasOTs = misOTsEnCloud.filter(o => !previousMyOTIds.includes(o.id));
-
-                            // Si hay nuevas OTs, notificar
-                            if (nuevasOTs.length > 0) {
-                                nuevasOTs.forEach(nuevaOT => {
-                                    console.log("📋 New OT received from cloud:", nuevaOT.titulo);
-
-                                    // Disparar alerta sensorial
-                                    if (typeof activarAlertaSensorial === 'function') {
-                                        activarAlertaSensorial({
-                                            mensaje: `Nueva tarea asignada: ${nuevaOT.titulo}`,
-                                            tipo: 'urgente'
-                                        });
-                                    }
-                                });
-                            }
-
-                            // Actualizar el array completo
-                            ots.length = 0;
-                            ots.push(...data.lista);
-
-                            // Actualizar snapshot previo SOLO con mis OTs
-                            previousMyOTIds = ots.filter(o => o.asignadoId === currentUser.id).map(o => o.id);
-
-                            // Actualizar vista si estamos en la pantalla de OTs
-                            if (nuevasOTs.length > 0 && currentPage === 'ots') {
-                                navigate('ots');
-                            }
-                        }
-                    }
-                });
-                console.log("📋 Firebase OT listener activated for user:", currentUser.nombre);
+            // FIREBASE: Activar listeners en tiempo real
+            if (typeof startRealtimeListeners === 'function') {
+                startRealtimeListeners();
             }
         }
 

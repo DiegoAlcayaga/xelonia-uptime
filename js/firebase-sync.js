@@ -42,6 +42,13 @@ async function syncToCloud() {
             lastUpdate: firebase.firestore.FieldValue.serverTimestamp()
         }, { merge: true });
 
+        // IMPORTANTE: También sincronizar OTs al documento que lee el listener
+        const otsRef = db.collection('cmms').doc('ots');
+        batch.set(otsRef, {
+            lista: ots || [],
+            lastUpdate: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+
         await batch.commit();
         console.log("☁️ Data synced to cloud successfully");
     } catch (error) {
@@ -84,6 +91,11 @@ async function loadFromCloud() {
  * Escucha cambios en tiempo real de alertas
  */
 function listenForAlerts() {
+    if (!currentUser) {
+        console.warn("⚠️ Cannot start alert listener: no currentUser");
+        return;
+    }
+
     db.collection('cmms').doc('alerts').onSnapshot((doc) => {
         if (doc.exists) {
             const alertData = doc.data();
@@ -105,6 +117,74 @@ function listenForAlerts() {
     });
     console.log("👂 Real-time alert listener active");
 }
+
+/**
+ * Escucha cambios en tiempo real de OTs
+ */
+function listenForOTs() {
+    if (!currentUser) {
+        console.warn("⚠️ Cannot start OT listener: no currentUser");
+        return;
+    }
+
+    let previousMyOTIds = ots.filter(o => o.asignadoId === currentUser.id).map(o => o.id);
+
+    db.collection('cmms').doc('ots').onSnapshot((doc) => {
+        if (doc.exists) {
+            const data = doc.data();
+            if (data.lista && Array.isArray(data.lista)) {
+                // Detectar nuevas OTs para este usuario
+                const misOTsEnCloud = data.lista.filter(o => o.asignadoId === currentUser.id);
+                const nuevasOTs = misOTsEnCloud.filter(o => !previousMyOTIds.includes(o.id));
+
+                // Si hay nuevas OTs, notificar
+                if (nuevasOTs.length > 0) {
+                    nuevasOTs.forEach(nuevaOT => {
+                        console.log("📋 New OT received from cloud:", nuevaOT.titulo);
+
+                        // Disparar alerta sensorial
+                        if (typeof activarAlertaSensorial === 'function') {
+                            activarAlertaSensorial({
+                                mensaje: `Nueva tarea asignada: ${nuevaOT.titulo}`,
+                                tipo: 'urgente'
+                            });
+                        }
+                    });
+                }
+
+                // Actualizar el array completo
+                ots.length = 0;
+                ots.push(...data.lista);
+
+                // Actualizar snapshot previo
+                previousMyOTIds = ots.filter(o => o.asignadoId === currentUser.id).map(o => o.id);
+
+                // Actualizar vista si estamos en la pantalla de OTs
+                if (typeof currentPage !== 'undefined' && currentPage === 'ots') {
+                    if (typeof navigate === 'function') {
+                        navigate('ots');
+                    }
+                }
+            }
+        }
+    });
+    console.log("👂 Real-time OT listener active");
+}
+
+/**
+ * Inicia todos los listeners en tiempo real
+ * DEBE llamarse DESPUÉS del login cuando currentUser ya existe
+ */
+window.startRealtimeListeners = function () {
+    if (!currentUser) {
+        console.error("❌ Cannot start listeners: currentUser not defined");
+        return;
+    }
+
+    console.log("🎧 Starting real-time listeners for user:", currentUser.nombre);
+    listenForAlerts();
+    listenForOTs();
+};
 
 /**
  * Publica una alerta en la nube para todos los dispositivos
@@ -173,10 +253,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderCurrentView();
     }
 
-    // Activar listener de alertas si hay un usuario logueado
-    if (currentUser) {
-        listenForAlerts();
-    }
+    // Los listeners se activarán DESPUÉS del login con startRealtimeListeners()
+    console.log("✅ Cloud data loaded. Listeners will start after login.");
 });
 
 console.log("✅ Firebase Sync Module Loaded");
