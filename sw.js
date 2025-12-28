@@ -1,12 +1,12 @@
 // Service Worker for XELONIA uptime PWA
 const CACHE_NAME = 'xelonia-v2';
 const urlsToCache = [
-    '/',
-    '/index.html',
-    '/manifest.json',
-    '/logo.jpg',
-    '/icon-192.png',
-    '/icon-512.png'
+    './',
+    './index.html',
+    './manifest.json',
+    './logo.jpg',
+    './icon-192.png',
+    './icon-512.png'
 ];
 
 // Install event - cache resources
@@ -98,7 +98,7 @@ self.addEventListener('notificationclick', event => {
     event.notification.close();
 
     event.waitUntil(
-        clients.openWindow('/')
+        clients.openWindow('./')
     );
 });
 
