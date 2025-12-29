@@ -8116,9 +8116,87 @@
             applyRolePermissions();
             navigate(currentRole === 'admin' ? 'dashboard' : 'ots');
 
-            // FIREBASE: Activar listeners en tiempo real
-            if (typeof startRealtimeListeners === 'function') {
-                startRealtimeListeners();
+            // FIREBASE: Activar listeners en tiempo real (INLINE para asegurar ejecución)
+            console.log("🔥 Attempting to start Firebase real-time listeners...");
+            console.log("🔥 currentUser:", currentUser);
+            console.log("🔥 firebase available:", typeof firebase !== 'undefined');
+
+            if (typeof firebase !== 'undefined' && firebase.firestore && currentUser) {
+                const db = firebase.firestore();
+                console.log("🎧 Starting real-time listeners for user:", currentUser.nombre);
+
+                // Listener de OTs
+                let previousMyOTIds = ots.filter(o => o.asignadoId === currentUser.id).map(o => o.id);
+                console.log("📋 Initial OT IDs for", currentUser.nombre, ":", previousMyOTIds);
+
+                db.collection('cmms').doc('ots').onSnapshot((doc) => {
+                    console.log("📋 OT snapshot received!");
+                    if (doc.exists) {
+                        const data = doc.data();
+                        if (data.lista && Array.isArray(data.lista)) {
+                            const misOTsEnCloud = data.lista.filter(o => o.asignadoId === currentUser.id);
+                            const nuevasOTs = misOTsEnCloud.filter(o => !previousMyOTIds.includes(o.id));
+
+                            console.log("📋 My OTs in cloud:", misOTsEnCloud.length);
+                            console.log("📋 New OTs detected:", nuevasOTs.length);
+
+                            if (nuevasOTs.length > 0) {
+                                nuevasOTs.forEach(nuevaOT => {
+                                    console.log("📋 New OT received from cloud:", nuevaOT.titulo);
+
+                                    // Disparar alerta sensorial
+                                    if (typeof activarAlertaSensorial === 'function') {
+                                        activarAlertaSensorial({
+                                            mensaje: `Nueva tarea asignada: ${nuevaOT.titulo}`,
+                                            tipo: 'urgente'
+                                        });
+                                    } else {
+                                        console.warn("⚠️ activarAlertaSensorial not available");
+                                    }
+                                });
+                            }
+
+                            // Actualizar el array completo
+                            ots.length = 0;
+                            ots.push(...data.lista);
+
+                            // Actualizar snapshot previo
+                            previousMyOTIds = ots.filter(o => o.asignadoId === currentUser.id).map(o => o.id);
+
+                            // Actualizar vista si estamos en la pantalla de OTs
+                            if (nuevasOTs.length > 0 && currentPage === 'ots') {
+                                navigate('ots');
+                            }
+                        }
+                    }
+                });
+                console.log("✅ OT listener active");
+
+                // Listener de alertas
+                db.collection('cmms').doc('alerts').onSnapshot((doc) => {
+                    console.log("🔔 Alert snapshot received!");
+                    if (doc.exists) {
+                        const alertData = doc.data();
+
+                        if (alertData.active && alertData.mensaje) {
+                            const yaConfirmada = alertData.confirmados && alertData.confirmados.includes(currentUser.id);
+                            const isForMe = !alertData.targetId || alertData.targetId === currentUser.id;
+                            const esVigente = (Date.now() - alertData.timestamp) < 3600000;
+
+                            console.log("🔔 Alert check:", { yaConfirmada, isForMe, esVigente });
+
+                            if (esVigente && !yaConfirmada && isForMe) {
+                                console.log("🔔 Triggering alert:", alertData.mensaje);
+                                if (typeof activarAlertaSensorial === 'function') {
+                                    activarAlertaSensorial(alertData);
+                                }
+                            }
+                        }
+                    }
+                });
+                console.log("✅ Alert listener active");
+            } else {
+                console.error("❌ Cannot start listeners - Firebase or currentUser not available");
             }
         }
 
