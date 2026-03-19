@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Auto-Restauración Técnicos</title>
+    <style>
+        body {
+            background: #0f172a;
+            color: white;
+            font-family: Arial;
+            padding: 40px;
+            text-align: center;
+        }
+
+        h1 {
+            color: #10b981;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🔄 RESTAURANDO TÉCNICOS...</h1>
+    <p id="status">Espera 2 segundos...</p>
+
+    <script>
+        setTimeout(() => {
+            const tecnicos = [
+                { id: 1, nombre: "Supervisor", iniciales: "AD", rol: "admin", password: "1234", cargo: "ADMINISTRADOR", color: "#f59e0b", activo: true, skills: [] },
+                { id: 2, nombre: "Juan Pérez", iniciales: "JP", rol: "tecnico", password: "1234", cargo: "Carlos", color: "#3b82f6", activo: true, skills: [] },
+                { id: 3, nombre: "Técnico 3", iniciales: "T3", rol: "tecnico", password: "1234", cargo: "Técnico", color: "#10b981", activo: true, skills: [] }
+            ];
+
+            localStorage.setItem('cmms_tecnicos', JSON.stringify(tecnicos));
+
+            document.getElementById('status').innerHTML = '✅ <strong>COMPLETADO</strong><br><br>Técnicos restaurados.<br><br>Redirigiendo a la app...';
+
+            setTimeout(() => {
+                window.location.href = 'https://xelonia-uptime-app.web.app';
+            }, 2000);
+        }, 2000);
+    </script>
+</body>
+
+</html>

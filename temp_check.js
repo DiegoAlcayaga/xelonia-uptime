@@ -7,7 +7,7 @@
     <meta http-equiv="Expires" content="0" />
     <script>
         // Simple version check to force reload when file changes
-        const version = 'v3.5.5-BITACORA-FIX';
+        const version = 'v3.5.4-DEPLOY-CHECK';
         if (localStorage.getItem('app_version') !== version) {
             localStorage.setItem('app_version', version);
             location.reload();
@@ -6804,14 +6804,11 @@
                 timelineDates.push(d);
             }
 
-            // 3. Identify Overdue Tasks
-            const todayStr = new Date().toISOString().split('T')[0];
-            const overdueTasks = scheduled.filter(task => {
-                const taskEndStr = task.fechaFin || task.fechaCreacion.split('T')[0];
-                return taskEndStr < todayStr;
-            });
+            // Date Range String for Header
+            const endDate = timelineDates[timelineDates.length - 1];
+            const rangeStr = `${startDate.toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })} - ${endDate.toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' })}`;
 
-            // 4. Render Header
+            // 3. Render Header
             const cols = timelineDates.map(d => {
                 const isToday = d.toISOString().split('T')[0] === new Date().toISOString().split('T')[0];
                 const dayName = d.toLocaleDateString('es-CL', { weekday: 'short' });
@@ -6911,35 +6908,11 @@
         `;
             }).join('');
 
-            // 5. Overdue Header Info
-            const overdueBadge = overdueTasks.length > 0 ? `<span style="background: var(--color-danger); color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.7rem; margin-left: 10px;">${overdueTasks.length} ATRASADAS</span>` : '';
-
-            // 6. Overdue List HTML
-            let overdueListHtml = '';
-            if (overdueTasks.length > 0) {
-                overdueListHtml = `
-                    <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 10px; margin-bottom: 1rem;">
-                        <div style="color: var(--color-danger); font-weight: bold; font-size: 0.8rem; margin-bottom: 8px; display: flex; align-items: center; gap: 5px;">
-                            <span class="material-symbols-rounded" style="font-size: 18px;">warning</span> 
-                            ATENCIÓN: Tienes ${overdueTasks.length} tareas fuera de plazo
-                        </div>
-                        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-                            ${overdueTasks.map(t => `
-                                <div onclick="openGanttModal(${t.id})" style="background: rgba(0,0,0,0.3); padding: 5px 10px; border-radius: 4px; border-left: 3px solid var(--color-danger); cursor: pointer; font-size: 0.7rem;">
-                                    <div style="font-weight: bold;">${t.titulo}</div>
-                                    <div style="color: var(--color-text-muted); font-size: 0.6rem;">Vencía: ${t.fechaFin || t.fechaCreacion.split('T')[0]}</div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                `;
-            }
-
             return `
         <div class="view-content">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                 <div>
-                    <h3 style="display: flex; align-items: center;">Planificación de Mantenimiento (Gantt) ${overdueBadge}</h3>
+                    <h3>Planificación de Mantenimiento (Gantt)</h3>
                     <div style="display: flex; gap: 15px; margin-top: 5px; font-size: 0.7rem;">
                         <span style="display: flex; align-items: center; gap: 4px;"><span style="width: 10px; height: 10px; border-radius: 2px; background: var(--color-danger);"></span> Urgente</span>
                         <span style="display: flex; align-items: center; gap: 4px;"><span style="width: 10px; height: 10px; border-radius: 2px; background: var(--color-warning);"></span> Alta</span>
@@ -6956,8 +6929,6 @@
                     <button class="btn btn-primary" onclick="openGanttModal()">+ Agendar Tarea</button>
                 </div>
             </div>
-
-            ${overdueListHtml}
 
             <div class="card" style="padding: 0; overflow-x: auto;">
                 <div style="display: grid; grid-template-columns: 200px 1fr; min-width: 800px;">

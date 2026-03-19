@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>DIAGNÓSTICO LOCALSTORAGE</title>
+    <style>
+        body {
+            background: #000;
+            color: #0f0;
+            font-family: monospace;
+            padding: 40px;
+            font-size: 1.2rem;
+            line-height: 1.8;
+        }
+
+        h1 {
+            color: #0ff;
+            border-bottom: 2px solid #0ff;
+            padding-bottom: 10px;
+        }
+
+        .test {
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(0, 255, 0, 0.1);
+            border-left: 4px solid #0f0;
+        }
+
+        .error {
+            background: rgba(255, 0, 0, 0.2);
+            border-left: 4px solid #f00;
+            color: #f00;
+        }
+
+        .success {
+            background: rgba(0, 255, 0, 0.2);
+            border-left: 4px solid #0f0;
+            color: #0f0;
+        }
+
+        .info {
+            color: #ff0;
+        }
+
+        pre {
+            background: #111;
+            padding: 10px;
+            overflow-x: auto;
+            border: 1px solid #333;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🔍 DIAGNÓSTICO COMPLETO - XELONIA CMMS</h1>
+    <div id="results"></div>
+
+    <script>
+        const results = document.getElementById('results');
+
+        function addTest(title, content, status = 'test') {
+            const div = document.createElement('div');
+            div.className = status;
+            div.innerHTML = `<strong>${title}</strong><br>${content}`;
+            results.appendChild(div);
+        }
+
+        // Test 1: localStorage básico
+        try {
+            localStorage.setItem('test_xelonia', 'hola');
+            const val = localStorage.getItem('test_xelonia');
+            if (val === 'hola') {
+                addTest('✅ TEST 1: localStorage FUNCIONA',
+                    'Se pudo escribir y leer correctamente.', 'success');
+            } else {
+                addTest('❌ TEST 1: localStorage NO FUNCIONA',
+                    `Escribió "hola" pero leyó: "${val}"`, 'error');
+            }
+            localStorage.removeItem('test_xelonia');
+        } catch (e) {
+            addTest('❌ TEST 1: localStorage BLOQUEADO',
+                `Error: ${e.message}`, 'error');
+        }
+
+        // Test 2: Verificar datos de CMMS
+        addTest('📋 TEST 2: Datos de CMMS en localStorage',
+            'Buscando claves que empiecen con "cmms_"...', 'info');
+
+        const cmmsKeys = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key.startsWith('cmms_')) {
+                cmmsKeys.push(key);
+            }
+        }
+
+        if (cmmsKeys.length > 0) {
+            let content = `<strong>Encontradas ${cmmsKeys.length} claves:</strong><br><pre>`;
+            cmmsKeys.forEach(key => {
+                const val = localStorage.getItem(key);
+                let preview = val;
+                if (val.length > 100) preview = val.substring(0, 100) + '...';
+                content += `${key}: ${preview}\n`;
+            });
+            content += '</pre>';
+            addTest('✅ TEST 2: Datos encontrados', content, 'success');
+        } else {
+            addTest('⚠️ TEST 2: NO hay datos de CMMS',
+                'localStorage está vacío. Los datos no se están guardando.', 'error');
+        }
+
+        // Test 3: cmms_equipos específicamente
+        const equipos = localStorage.getItem('cmms_equipos');
+        if (equipos) {
+            try {
+                const parsed = JSON.parse(equipos);
+                addTest('✅ TEST 3: cmms_equipos existe',
+                    `Array con ${parsed.length} elementos:<br><pre>${JSON.stringify(parsed, null, 2)}</pre>`,
+                    'success');
+            } catch (e) {
+                addTest('❌ TEST 3: cmms_equipos corrupto',
+                    `No se pudo parsear: ${e.message}`, 'error');
+            }
+        } else {
+            addTest('❌ TEST 3: cmms_equipos NO EXISTE',
+                'La clave "cmms_equipos" no está en localStorage.', 'error');
+        }
+
+        // Test 4: Timestamp
+        const lastUpdate = localStorage.getItem('cmms_last_local_update');
+        if (lastUpdate) {
+            const date = new Date(parseInt(lastUpdate));
+            addTest('✅ TEST 4: Timestamp encontrado',
+                `Última actualización: ${date.toLocaleString()}`, 'success');
+        } else {
+            addTest('⚠️ TEST 4: No hay timestamp',
+                'La clave "cmms_last_local_update" no existe.', 'info');
+        }
+
+        // Test 5: Cuota de almacenamiento
+        addTest('📊 TEST 5: Capacidad de localStorage',
+            'Intentando escribir 1MB de datos para probar el límite...', 'info');
+
+        try {
+            const bigData = 'x'.repeat(1024 * 1024); // 1MB
+            localStorage.setItem('test_big', bigData);
+            localStorage.removeItem('test_big');
+            addTest('✅ TEST 5: Capacidad OK',
+                'Se pudo escribir 1MB sin problemas.', 'success');
+        } catch (e) {
+            addTest('❌ TEST 5: Límite alcanzado',
+                `Error al escribir 1MB: ${e.message}`, 'error');
+        }
+
+        // Resumen final
+        addTest('🎯 RESUMEN',
+            `<strong>Total de claves en localStorage:</strong> ${localStorage.length}<br>` +
+            `<strong>Claves de CMMS:</strong> ${cmmsKeys.length}<br>` +
+            `<strong>Navegador:</strong> ${navigator.userAgent}`,
+            'info');
+    </script>
+</body>
+
+</html>

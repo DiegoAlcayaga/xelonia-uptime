@@ -1,0 +1,14 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow public access to bitacora collection
+    match /bitacora_entradas/{document=**} {
+      allow read, write: if true;
+    }
+    
+    // Emergency: Allow all access to debug missing data in main app
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Test localStorage</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 2rem;
+            background: #0f172a;
+            color: white;
+        }
+
+        button {
+            padding: 12px 24px;
+            margin: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 8px;
+        }
+
+        #resultado {
+            margin-top: 20px;
+            padding: 20px;
+            background: #1e293b;
+            border-radius: 8px;
+            min-height: 100px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🧪 Prueba de localStorage</h1>
+
+    <button onclick="guardarDato()">1. GUARDAR DATO</button>
+    <button onclick="leerDato()">2. LEER DATO</button>
+    <button onclick="borrarDato()">3. BORRAR DATO</button>
+
+    <div id="resultado"></div>
+
+    <script>
+        const resultado = document.getElementById('resultado');
+
+        function guardarDato() {
+            try {
+                const dato = {
+                    texto: "Prueba de persistencia",
+                    fecha: new Date().toISOString(),
+                    numero: Math.random()
+                };
+
+                localStorage.setItem('TEST_DATO', JSON.stringify(dato));
+                resultado.innerHTML = `
+                    ✅ <strong>DATO GUARDADO</strong><br>
+                    ${JSON.stringify(dato, null, 2)}<br><br>
+                    <strong>AHORA:</strong><br>
+                    1. Cierra esta ventana completamente<br>
+                    2. Reabre este archivo HTML<br>
+                    3. Click en "LEER DATO"
+                `;
+                console.log('✅ Guardado:', dato);
+            } catch (e) {
+                resultado.innerHTML = `❌ ERROR: ${e.message}`;
+                console.error(e);
+            }
+        }
+
+        function leerDato() {
+            try {
+                const dato = localStorage.getItem('TEST_DATO');
+
+                if (dato) {
+                    resultado.innerHTML = `
+                        ✅ <strong>DATO ENCONTRADO (localStorage funciona!)</strong><br>
+                        ${dato}<br><br>
+                        ${JSON.stringify(JSON.parse(dato), null, 2)}
+                    `;
+                    console.log('✅ Leído:', JSON.parse(dato));
+                } else {
+                    resultado.innerHTML = `
+                        ❌ <strong>NO HAY DATO</strong><br>
+                        localStorage está vacío o se borró
+                    `;
+                    console.log('❌ No encontrado');
+                }
+            } catch (e) {
+                resultado.innerHTML = `❌ ERROR: ${e.message}`;
+                console.error(e);
+            }
+        }
+
+        function borrarDato() {
+            localStorage.removeItem('TEST_DATO');
+            resultado.innerHTML = '🗑️ Dato borrado';
+        }
+
+        // Auto-check al cargar
+        window.onload = function () {
+            resultado.innerHTML = `
+                📋 <strong>Instrucciones:</strong><br>
+                1. Click "GUARDAR DATO"<br>
+                2. Cierra esta ventana<br>
+                3. Abre este archivo de nuevo<br>
+                4. Click "LEER DATO"<br><br>
+                Si localStorage funciona, verás el dato guardado.
+            `;
+        };
+    </script>
+</body>
+
+</html>

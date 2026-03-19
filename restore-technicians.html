@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Restaurar Técnicos</title>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+</head>
+
+<body>
+    <h1>Restaurar Técnicos a Firestore</h1>
+    <button onclick="restoreTechnicians()"
+        style="padding: 20px; font-size: 18px; background: #10b981; color: white; border: none; border-radius: 8px; cursor: pointer;">
+        🔄 RESTAURAR TÉCNICOS
+    </button>
+    <div id="status" style="margin-top: 20px; font-family: monospace;"></div>
+
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDNxljt7NvCl0JREp30f4fLHPD8m4L35s4",
+            authDomain: "xelonia-uptime-app.firebaseapp.com",
+            projectId: "xelonia-uptime-app",
+            storageBucket: "xelonia-uptime-app.firebasestorage.app",
+            messagingSenderId: "113362614608",
+            appId: "1:113362614608:web:3145603b7d56f8d59c9455",
+            measurementId: "G-YSBPE26SHT"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        async function restoreTechnicians() {
+            const status = document.getElementById('status');
+            status.innerHTML = '⏳ Restaurando técnicos...<br>';
+
+            const tecnicos = [
+                {
+                    id: 1,
+                    nombre: "Supervisor",
+                    iniciales: "AD",
+                    rol: "admin",
+                    password: "1234",
+                    color: "#f59e0b",
+                    activo: true,
+                    skills: [],
+                    foto: null
+                },
+                {
+                    id: 2,
+                    nombre: "Juan Pérez",
+                    iniciales: "JP",
+                    rol: "tecnico",
+                    password: "1234",
+                    cargo: "Carlos",
+                    color: "#3b82f6",
+                    activo: true,
+                    skills: [],
+                    foto: "img04.com"
+                }
+            ];
+
+            try {
+                const batch = db.batch();
+
+                tecnicos.forEach(tecnico => {
+                    const ref = db.collection('tecnicos').doc(String(tecnico.id));
+                    batch.set(ref, tecnico);
+                    status.innerHTML += `✅ Preparando: ${tecnico.nombre}<br>`;
+                });
+
+                await batch.commit();
+
+                status.innerHTML += '<br>🎉 <strong>RESTAURACIÓN COMPLETADA</strong><br>';
+                status.innerHTML += `✅ ${tecnicos.length} técnicos restaurados a Firestore<br>`;
+                status.innerHTML += '<br>🔄 Ahora RECARGA la aplicación principal (Ctrl+F5)<br>';
+
+            } catch (error) {
+                status.innerHTML += `<br>❌ ERROR: ${error.message}<br>`;
+                console.error(error);
+            }
+        }
+    </script>
+</body>
+
+</html>

@@ -27,6 +27,7 @@ console.log("🔥 Firebase Initialized - Cloud Sync Active");
  */
 async function syncToCloud() {
     try {
+        console.log("☁️ Starting Cloud Sync...");
         const batch = db.batch();
 
         // Referencia al documento principal del sistema
@@ -51,8 +52,11 @@ async function syncToCloud() {
 
         await batch.commit();
         console.log("☁️ Data synced to cloud successfully");
+        // Visual Feedback for User Debugging
+        // alert("☁️ Sincronización Exitosa: Datos guardados en la nube."); 
     } catch (error) {
         console.error("❌ Error syncing to cloud:", error);
+        alert("❌ Error de Sincronización: " + error.message);
     }
 }
 
@@ -220,22 +224,10 @@ async function confirmAlert(userId) {
 }
 
 // ============================================
-// OVERRIDE PERSIST FUNCTION
+// EXPORT FUNCTIONS GLOBALLY
 // ============================================
-
-// Guardar la función persist original
-const originalPersist = window.persist;
-
-// Nueva función persist que sincroniza con la nube
-window.persist = async function () {
-    // Primero guardar en localStorage (fallback offline)
-    if (originalPersist) {
-        originalPersist();
-    }
-
-    // Luego sincronizar con la nube
-    await syncToCloud();
-};
+window.syncToCloud = syncToCloud;
+window.loadFromCloud = loadFromCloud;
 
 // ============================================
 // INITIALIZATION

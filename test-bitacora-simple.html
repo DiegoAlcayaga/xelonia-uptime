@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Test Bitácora Simplificado</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 2rem;
+            background: #0f172a;
+            color: white;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .input-box {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            margin-bottom: 10px;
+            background: #1e293b;
+            color: white;
+            border: 1px solid #3b82f6;
+            border-radius: 8px;
+        }
+
+        button {
+            padding: 12px 24px;
+            margin: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 8px;
+        }
+
+        #log {
+            margin-top: 20px;
+            padding: 20px;
+            background: #1e293b;
+            border-radius: 8px;
+            min-height: 200px;
+            font-family: monospace;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .entrada {
+            background: #334155;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 6px;
+            border-left: 4px solid #3b82f6;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🧪 Test Bitácora ULTRA Simplificado</h1>
+
+    <textarea id="texto" class="input-box" rows="3" placeholder="Escribe algo aquí..."></textarea>
+
+    <div>
+        <button onclick="guardar()">💾 GUARDAR</button>
+        <button onclick="leer()">📖 LEER</button>
+        <button onclick="borrar()">🗑️ BORRAR TODO</button>
+    </div>
+
+    <div id="log"></div>
+    <div id="entradas"></div>
+
+    <script>
+        const log = document.getElementById('log');
+        const entradas = document.getElementById('entradas');
+
+        function addLog(msg) {
+            const timestamp = new Date().toLocaleTimeString();
+            log.innerHTML += `[${timestamp}] ${msg}<br>`;
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function guardar() {
+            const texto = document.getElementById('texto').value.trim();
+
+            if (!texto) {
+                addLog('❌ Debes escribir algo primero');
+                return;
+            }
+
+            addLog('🔵 Iniciando guardado...');
+
+            try {
+                // Leer existentes
+                const guardado = localStorage.getItem('TEST_BITACORA');
+                const lista = guardado ? JSON.parse(guardado) : [];
+                addLog(`🔵 Entradas existentes: ${lista.length}`);
+
+                // Crear nueva
+                const nueva = {
+                    id: Date.now(),
+                    texto: texto,
+                    fecha: new Date().toISOString(),
+                    hora: new Date().toLocaleTimeString()
+                };
+
+                lista.unshift(nueva);
+
+                // Guardar
+                localStorage.setItem('TEST_BITACORA', JSON.stringify(lista));
+                addLog(`✅ GUARDADO EXITOSO! Total: ${lista.length} entradas`);
+
+                // Verificar
+                const verificar = localStorage.getItem('TEST_BITACORA');
+                if (verificar) {
+                    addLog(`✅ VERIFICADO - localStorage tiene datos`);
+                } else {
+                    addLog(`❌ ERROR - localStorage está vacío después de guardar`);
+                }
+
+                document.getElementById('texto').value = '';
+                leer();
+
+            } catch (e) {
+                addLog(`❌ ERROR: ${e.message}`);
+            }
+        }
+
+        function leer() {
+            addLog('🟢 Leyendo de localStorage...');
+
+            try {
+                const guardado = localStorage.getItem('TEST_BITACORA');
+
+                if (!guardado) {
+                    addLog('⚠️ localStorage está VACÍO');
+                    entradas.innerHTML = '<p style="color: #ef4444;">No hay entradas guardadas</p>';
+                    return;
+                }
+
+                const lista = JSON.parse(guardado);
+                addLog(`✅ Encontradas ${lista.length} entradas`);
+
+                entradas.innerHTML = '<h3>Entradas guardadas:</h3>';
+                lista.forEach((e, i) => {
+                    entradas.innerHTML += `
+                        <div class="entrada">
+                            <strong>#${i + 1}</strong> - ${e.hora}<br>
+                            ${e.texto}
+                        </div>
+                    `;
+                });
+
+            } catch (e) {
+                addLog(`❌ ERROR al leer: ${e.message}`);
+            }
+        }
+
+        function borrar() {
+            if (confirm('¿Borrar todas las entradas?')) {
+                localStorage.removeItem('TEST_BITACORA');
+                addLog('🗑️ Todas las entradas borradas');
+                entradas.innerHTML = '';
+            }
+        }
+
+        // Auto-leer al cargar
+        window.onload = function () {
+            addLog('✅ App cargada');
+            addLog('📍 Protocolo: ' + window.location.protocol);
+
+            // Verificar si localStorage está disponible
+            try {
+                localStorage.setItem('test', '1');
+                localStorage.removeItem('test');
+                addLog('✅ localStorage está disponible');
+            } catch (e) {
+                addLog('❌ localStorage NO está disponible: ' + e.message);
+            }
+
+            leer();
+        };
+    </script>
+
+    <div
+        style="margin-top: 30px; padding: 15px; background: rgba(245, 158, 11, 0.1); border-left: 4px solid #f59e0b; border-radius: 8px;">
+        <h3 style="margin-top: 0; color: #f59e0b;">📋 Instrucciones:</h3>
+        <ol>
+            <li>Escribe algo en el cuadro de texto</li>
+            <li>Click "GUARDAR" - verás log en pantalla</li>
+            <li><strong>CIERRA esta ventana completamente (X)</strong></li>
+            <li><strong>Abre este archivo de nuevo</strong> (doble click en test-bitacora-simple.html)</li>
+            <li>Automáticamente cargará y mostrará tus entradas</li>
+        </ol>
+        <p><strong>Si al reabrir NO ves tus entradas → el problema es el navegador/protocolo file://</strong></p>
+    </div>
+</body>
+
+</html>

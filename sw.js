@@ -1,5 +1,5 @@
 // Service Worker for XELONIA uptime PWA
-const CACHE_NAME = 'xelonia-v2';
+const CACHE_NAME = 'xelonia-v2-20260220d';
 const urlsToCache = [
     './',
     './index.html',
