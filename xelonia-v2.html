@@ -5,9 +5,8 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
-    <script>
-        // Versión v3.6.2 - BUGFIX-GANTT-V2
-        const version = 'v3.6.2-BUGFIX-GANTT-V2';
+        // Versión v3.6.3 - FINAL-ROBUST-GANTT
+        const version = 'v3.6.3-FINAL-ROBUST-GANTT';
         console.log('--- XELONIA UPTIME LOADED --- Version: ' + version);
         
         if (localStorage.getItem('app_version') !== version) {
@@ -6805,11 +6804,23 @@
 
         function renderGantt() {
             // 1. Filter Scheduled Tasks
-            // Exclude 'completada' status
+            if (!ots || !Array.isArray(ots)) {
+                console.error("Gantt: 'ots' no está definido o no es un array.");
+                return `<div class="view-content"><div class="card" style="padding: 20px; text-align: center;">Error: Datos no cargados. Reintente en unos segundos.</div></div>`;
+            }
+            
             const scheduled = ots.filter(o =>
-                (o.tipo === 'programado' || o.tipo === 'preventivo') &&
+                o && (o.tipo === 'programado' || o.tipo === 'preventivo') &&
                 o.estado !== 'completada'
             );
+
+            // Ayudante para fechas seguras
+            const getSafeDateStr = (task, prop) => {
+                const val = task[prop];
+                if (val && typeof val === 'string' && val.includes('T')) return val.split('T')[0];
+                if (val && typeof val === 'string') return val;
+                return new Date().toISOString().split('T')[0]; // Fallback hoy
+            };
 
             // 2. Setup Timeline Params
             const year = currentGanttDate.getFullYear();
@@ -6832,10 +6843,10 @@
                 timelineDates.push(d);
             }
 
-            // 3. Identify Overdue Tasks (Tareas que vencieron antes del inicio de ESTE mes)
+            // 3. Identify Overdue Tasks
             const monthStartStr = startDate.toISOString().split('T')[0];
             const overdueTasks = scheduled.filter(task => {
-                const taskEndStr = task.fechaFin || task.fechaCreacion.split('T')[0];
+                const taskEndStr = task.fechaFin || getSafeDateStr(task, 'fechaCreacion');
                 return taskEndStr < monthStartStr;
             });
 
@@ -6857,7 +6868,8 @@
 
             // 4. Render Rows
             const rows = scheduled.map(task => {
-                const tStart = new Date(task.fechaCreacion);
+                const fCreacion = task.fechaCreacion || new Date().toISOString();
+                const tStart = new Date(fCreacion);
                 // Calculate offset days from timeline start
                 const diffTime = tStart - startDate;
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -6882,8 +6894,8 @@
                 // If effective width is <= 0 after clamping, don't render bar
                 if (visualEnd <= visualStart) return '';
 
-                const eqName = task.roomId ? ("Habitación " + task.roomId) : (equipos.find(e => e.id === task.equipoId)?.nombre || "Equipo General");
-                const tecName = tecnicos.find(t => t.id === task.asignadoId)?.nombre || "Sin Asignar";
+                const eqName = task.roomId ? ("Habitación " + task.roomId) : ((typeof equipos !== 'undefined' && equipos.find) ? (equipos.find(e => e.id === task.equipoId)?.nombre || "Equipo General") : "Equipo General");
+                const tecName = (typeof tecnicos !== 'undefined' && tecnicos.find) ? (tecnicos.find(t => t.id === task.asignadoId)?.nombre || "Sin Asignar") : "Sin Asignar";
 
                 const progresoValue = task.progreso || 0;
 
