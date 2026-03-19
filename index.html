@@ -5,20 +5,41 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
-    <script>
-        // Simple version check to force reload when file changes
-        const version = 'v3.5.5-BITACORA-FIX';
+        // Versión v3.6.4 - GANTT-FINAL-V2
+        const version = 'v3.6.4-GANTT-FINAL-V2';
+        console.log('--- XELONIA UPTIME LOADED --- Version: ' + version);
+        
         if (localStorage.getItem('app_version') !== version) {
+            console.log('New version detected! Cleaning cache...');
             localStorage.setItem('app_version', version);
-            location.reload();
+            
+            // Limpieza agresiva de cache
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(registrations => {
+                    for (let registration of registrations) {
+                        registration.unregister();
+                        console.log('SW unregistered');
+                    }
+                });
+            }
+            if ('caches' in window) {
+                caches.keys().then(names => {
+                    for (let name of names) {
+                        caches.delete(name);
+                        console.log('Cache purged: ' + name);
+                    }
+                });
+            }
+            
+            setTimeout(() => { location.reload(true); }, 500);
         }
-    </script>
-    <!-- Firebase Sync Module -->
-    <script src="js/firebase-sync.js"></script>
     </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>XELONIA uptime - Gestión de Mantenimiento</title>
+    
+    <script src="js/firebase-sync.js"></script>
+    <script src="js/monthly-closure.js" defer></script>
 
     <!-- PWA Configuration -->
     <link rel="manifest" href="manifest.json">
@@ -27,12 +48,14 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="XELONIA uptime">
     <link rel="apple-touch-icon" href="icon-192.png">
+
     <!-- Fuentes e Iconos -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" />
+
+    <!-- Librerías Externas -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
@@ -41,12 +64,6 @@
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-
-    <!-- Firebase Sync Module -->
-    <script src="js/firebase-sync.js"></script>
-
-    <!-- Monthly Closure Module -->
-    <script src="js/monthly-closure.js" defer></script>
 
 
 
@@ -6773,30 +6790,52 @@
 
         // --- GANTT NAVIGATION ---
         let currentGanttDate = new Date();
-        currentGanttDate.setDate(currentGanttDate.getDate() - 2); // Init: Start a bit before today
+        currentGanttDate.setDate(1); // Siempre empezamos el 1 del mes
 
         function prevGantt() {
-            currentGanttDate.setDate(currentGanttDate.getDate() - 14);
+            currentGanttDate.setMonth(currentGanttDate.getMonth() - 1);
             renderCurrentView();
         }
 
         function nextGantt() {
-            currentGanttDate.setDate(currentGanttDate.getDate() + 14);
+            currentGanttDate.setMonth(currentGanttDate.getMonth() + 1);
             renderCurrentView();
         }
 
         function renderGantt() {
             // 1. Filter Scheduled Tasks
-            // Exclude 'completada' status
+            if (!ots || !Array.isArray(ots)) {
+                console.error("Gantt: 'ots' no está definido o no es un array.");
+                return `<div class="view-content"><div class="card" style="padding: 20px; text-align: center;">Error: Datos no cargados. Reintente en unos segundos.</div></div>`;
+            }
+            
             const scheduled = ots.filter(o =>
-                (o.tipo === 'programado' || o.tipo === 'preventivo') &&
+                o && (o.tipo === 'programado' || o.tipo === 'preventivo') &&
                 o.estado !== 'completada'
             );
 
+            // Ayudante para fechas seguras
+            const getSafeDateStr = (task, prop) => {
+                const val = task[prop];
+                if (val && typeof val === 'string' && val.includes('T')) return val.split('T')[0];
+                if (val && typeof val === 'string') return val;
+                return new Date().toISOString().split('T')[0]; // Fallback hoy
+            };
+
             // 2. Setup Timeline Params
-            const startDate = new Date(currentGanttDate);
-            const daysToShow = 14;
+            const year = currentGanttDate.getFullYear();
+            const month = currentGanttDate.getMonth();
+            const startDate = new Date(year, month, 1);
+            const daysToShow = new Date(year, month + 1, 0).getDate(); // Días reales del mes
             const timelineDates = [];
+
+            const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+                "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+            ];
+            let rangeStr = "Cargando...";
+            if (monthNames[month]) {
+                rangeStr = `${monthNames[month]} ${year}`;
+            }
 
             for (let i = 0; i < daysToShow; i++) {
                 const d = new Date(startDate);
@@ -6805,10 +6844,10 @@
             }
 
             // 3. Identify Overdue Tasks
-            const todayStr = new Date().toISOString().split('T')[0];
+            const monthStartStr = startDate.toISOString().split('T')[0];
             const overdueTasks = scheduled.filter(task => {
-                const taskEndStr = task.fechaFin || task.fechaCreacion.split('T')[0];
-                return taskEndStr < todayStr;
+                const taskEndStr = task.fechaFin || getSafeDateStr(task, 'fechaCreacion');
+                return taskEndStr < monthStartStr;
             });
 
             // 4. Render Header
@@ -6829,7 +6868,8 @@
 
             // 4. Render Rows
             const rows = scheduled.map(task => {
-                const tStart = new Date(task.fechaCreacion);
+                const fCreacion = task.fechaCreacion || new Date().toISOString();
+                const tStart = new Date(fCreacion);
                 // Calculate offset days from timeline start
                 const diffTime = tStart - startDate;
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -6854,8 +6894,8 @@
                 // If effective width is <= 0 after clamping, don't render bar
                 if (visualEnd <= visualStart) return '';
 
-                const eqName = task.roomId ? ("Habitación " + task.roomId) : (equipos.find(e => e.id === task.equipoId)?.nombre || "Equipo General");
-                const tecName = tecnicos.find(t => t.id === task.asignadoId)?.nombre || "Sin Asignar";
+                const eqName = task.roomId ? ("Habitación " + task.roomId) : ((typeof equipos !== 'undefined' && equipos.find) ? (equipos.find(e => e.id === task.equipoId)?.nombre || "Equipo General") : "Equipo General");
+                const tecName = (typeof tecnicos !== 'undefined' && tecnicos.find) ? (tecnicos.find(t => t.id === task.asignadoId)?.nombre || "Sin Asignar") : "Sin Asignar";
 
                 const progresoValue = task.progreso || 0;
 
@@ -6971,6 +7011,20 @@
                     </div>
 
                     <!-- Body -->
+                    ${overdueTasks.length > 0 ? `
+                        <div style="display: contents;">
+                            <div style="padding: 10px; border-bottom: 2px solid var(--color-danger); background: rgba(239, 68, 68, 0.1); font-size: 0.75rem; font-weight: 800; color: var(--color-danger); display: flex; align-items: center; gap: 5px;">
+                                <span class="material-symbols-rounded" style="font-size: 16px;">warning</span> PENDIENTES ANTERIORES
+                            </div>
+                            <div style="grid-column: 2 / span ${daysToShow}; border-bottom: 2px solid var(--color-danger); background: rgba(239, 68, 68, 0.05); display: flex; align-items: center; padding: 5px; gap: 10px; overflow-x: auto;">
+                                ${overdueTasks.map(ot => `
+                                    <div onclick="openGanttModal(${ot.id})" style="background: var(--color-danger); color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; cursor: pointer; white-space: nowrap; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+                                        ${ot.titulo} (Venció: ${ot.fechaFin || ot.fechaCreacion.split('T')[0]})
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
                     ${rows}
                 </div>
                 ${rows.length === 0 ? '<div style="padding: 20px; text-align: center; color: var(--color-text-muted);">No hay tareas programadas para este período.</div>' : ''}
